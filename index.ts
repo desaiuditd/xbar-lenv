@@ -120,6 +120,7 @@ try {
                   text: sentenceCase(action),
                   shell: cwd[0],
                   ...params,
+                  terminal: true,
                 };
               }),
           ];
