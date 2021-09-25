@@ -52,6 +52,7 @@ interface Repo {
 
 interface LenvConfig {
   repos: Record<string, Repo>;
+  groups: Record<string, string[]>;
 }
 
 try {
@@ -74,74 +75,134 @@ try {
     ),
   ) as LenvConfig;
 
+  const groups = Object.keys(lenvConfig.groups);
   const repos = Object.entries(lenvConfig.repos);
 
   const xBarItems = [
     { text: "lenv", dropdown: false },
     separator,
-    ...repos.map(
-      ([repoName, { repo_path, orchestrated_via }]) => {
-        if (!["workspace", "gopath"].includes(repo_path)) {
-          console.log(
-            `repo_path "${repo_path}" not supported for: ${repoName}`,
-          );
-          Deno.exit();
-        }
+    {
+      text: "Groups",
+      submenu: groups.map((g) => ({
+        text: g,
+        submenu: [
+          {
+            text: "Init",
+            shell: "lenv",
+            param1: "init",
+            param2: "--group",
+            param3: g,
+            terminal: true,
+          },
+          {
+            text: "Start",
+            shell: "lenv",
+            param1: "start",
+            param2: "--group",
+            param3: g,
+            terminal: true,
+          },
+          {
+            text: "Stop",
+            shell: "lenv",
+            param1: "stop",
+            param2: "--group",
+            param3: g,
+            terminal: true,
+          },
+          {
+            text: "Down",
+            shell: "lenv",
+            param1: "down",
+            param2: "--group",
+            param3: g,
+            terminal: true,
+          },
+          {
+            text: "Update",
+            shell: "lenv",
+            param1: "update",
+            param2: "--group",
+            param3: g,
+            terminal: true,
+          },
+          {
+            text: "Restart",
+            shell: "lenv",
+            param1: "restart",
+            param2: "--group",
+            param3: g,
+            terminal: true,
+          },
+        ],
+      })),
+    },
+    {
+      text: "Repos",
+      submenu: repos.map(
+        ([repoName, { repo_path, orchestrated_via }]) => {
+          if (!["workspace", "gopath"].includes(repo_path)) {
+            console.log(
+              `repo_path "${repo_path}" not supported for: ${repoName}`,
+            );
+            Deno.exit();
+          }
 
-        if (!["docker", "make", "none"].includes(orchestrated_via)) {
-          console.log(
-            `orchestrated_via "${orchestrated_via}" not supported for: ${repoName}`,
-          );
-          Deno.exit();
-        }
+          if (!["docker", "make", "none"].includes(orchestrated_via)) {
+            console.log(
+              `orchestrated_via "${orchestrated_via}" not supported for: ${repoName}`,
+            );
+            Deno.exit();
+          }
 
-        let actions = [] as unknown[];
-        if (orchestrated_via !== "none") {
-          const cwd = GO_TO_REPO_ACTIONS[repo_path].map((cmd) =>
-            cmd.replace("REPO_NAME", repoName)
-          );
+          let actions = [] as unknown[];
+          if (orchestrated_via !== "none") {
+            const cwd = GO_TO_REPO_ACTIONS[repo_path].map((cmd) =>
+              cmd.replace("REPO_NAME", repoName)
+            );
 
-          actions = [
-            separator,
-            ...Object.entries(LENV_ACTIONS[orchestrated_via])
-              .map(([action, cmds]) => {
-                const params = Object.fromEntries(
-                  [
-                    cwd[1],
-                    "&&",
-                    ...cmds,
-                  ].map((cmd, i) => ([
-                    `param${i + 1}`,
-                    cmd,
-                  ])),
-                );
+            actions = [
+              separator,
+              ...Object.entries(LENV_ACTIONS[orchestrated_via])
+                .map(([action, cmds]) => {
+                  const params = Object.fromEntries(
+                    [
+                      cwd[1],
+                      "&&",
+                      ...cmds,
+                    ].map((cmd, i) => ([
+                      `param${i + 1}`,
+                      cmd,
+                    ])),
+                  );
 
-                return {
-                  text: sentenceCase(action),
-                  shell: cwd[0],
-                  ...params,
-                  terminal: true,
-                };
-              }),
-          ];
-        }
+                  return {
+                    text: sentenceCase(action),
+                    shell: cwd[0],
+                    ...params,
+                    terminal: true,
+                  };
+                }),
+            ];
+          }
 
-        return {
-          text: repoName,
-          submenu: [
-            {
-              text: `Path Type: ${repo_path}`,
-              disabled: true,
-            },
-            {
-              text: `Orchestrated Via: ${orchestrated_via}`,
-              disabled: true,
-            },
-            ...actions,
-          ],
-        };
-      },
-    ),
+          return {
+            text: repoName,
+            submenu: [
+              {
+                text: `Path Type: ${repo_path}`,
+                disabled: true,
+              },
+              {
+                text: `Orchestrated Via: ${orchestrated_via}`,
+                disabled: true,
+              },
+              ...actions,
+            ],
+          };
+        },
+      ),
+    },
   ];
 
   bitbar(xBarItems);
